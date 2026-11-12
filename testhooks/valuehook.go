@@ -53,10 +53,11 @@ func (e *valueHook[T]) WithValue(fakeValue T) WithSetup {
 				if index < 0 {
 					return
 				}
-				// RunFunc is a scope for this hook: remove this activation and
-				// everything activated on the same hook inside it.
-				next := make(activationList[T], index)
+				// Remove only this activation; other activations, including
+				// ones created after it, belong to their own scopes.
+				next := make(activationList[T], len(activations)-1)
 				copy(next, activations[:index])
+				copy(next[index:], activations[index+1:])
 				if e.activations.CompareAndSwap(current, newActivationList(next)) {
 					return
 				}

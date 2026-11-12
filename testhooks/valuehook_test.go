@@ -46,13 +46,14 @@ func TestValueHook(t *testing.T) {
 	})
 	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
 
-	// RunFunc scopes later activations of the same hook: a SetupInTest
-	// created inside the block on this hook is cleaned when RunFunc returns.
-	valueHook.WithValue(fakeValue1).RunFunc(func() {
-		valueHook.WithValue(fakeValue2).SetupInTest(t)
-		assert.Equal(t, fakeValue2, valueHook.Apply(originalValue))
+	// RunFunc removes only its own activation. A SetupInTest created inside
+	// the block stays active until that test's cleanup runs.
+	setupHook := NewValueHook[string]()
+	setupHook.WithValue(fakeValue1).RunFunc(func() {
+		setupHook.WithValue(fakeValue2).SetupInTest(t)
+		assert.Equal(t, fakeValue2, setupHook.Apply(originalValue))
 	})
-	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
+	assert.Equal(t, fakeValue2, setupHook.Apply(originalValue))
 
 	// Other hooks are independent: a SetupInTest on another hook keeps its
 	// test-lifetime cleanup even when created inside this hook's RunFunc.

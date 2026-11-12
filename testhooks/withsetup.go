@@ -20,31 +20,26 @@ type testingT interface {
 // its associated cleanup function.
 type WithSetup interface {
 	// RunFunc runs the given block calling the setup function and the
-	// cleanup function.
-	//
-	// For hook-created WithSetups, RunFunc scopes later activations of the
-	// same hook: the activation it creates and any later activation of that
-	// hook inside block (including one registered with SetupInTest) are cleaned
-	// up when the block returns. Activations of other hooks and custom
-	// NewWithSetup callbacks are independent.
+	// cleanup function. It removes only the activation created by this call;
+	// other activations of the same hook are left alone.
 	RunFunc(block func())
 
 	// SetupInTest runs the setup immediately and schedules the cleanup
-	// function to be run when the current test/subtest finishes.
+	// function to be run when the given test's cleanup runs. It removes only
+	// the activation created by this call; other activations of the same hook
+	// are left alone.
 	//
-	// If called inside a RunFunc block on the same hook, it is cleaned when
-	// the RunFunc returns, not at the end of the test. SetupInTest on a
-	// different hook is independent and remains until test cleanup.
-	//
-	// t must be the testing.TB of the currently running test/subtest. Passing
-	// another test's TB (for example a parent's from a child) is undefined;
-	// use the TB of the scope the override belongs to.
+	// t is normally the currently running test/subtest, but may be any
+	// testingT whose Cleanup runs when the override should end.
 	//
 	// Note: it expects to receive *testing.T as an argument,
 	// however the current type argument is an interface with
 	// a subset of the methods in *testing.T to avoid a direct
 	// dependency.
 	SetupInTest(t testingT)
+
+	// RunFunc and SetupInTest are not safe to call concurrently on the same
+	// hook from multiple goroutines; their behavior is undefined.
 }
 
 func (w withSetup) RunFunc(block func()) {
