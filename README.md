@@ -1,7 +1,6 @@
 # Test Hooks (testhooks)
 
-Behavior-stubbing hooks that use Go build tags (`!notest`) to compile test code out of
-production binaries completely.
+Behavior-stubbing hooks that are compiled out of production builds with `-tags notest`.
 
 Pre-1.0, maintained on a best-effort basis. See [Project status](#project-status).
 
@@ -9,7 +8,7 @@ Pre-1.0, maintained on a best-effort basis. See [Project status](#project-status
 
 ### Injecting errors
 
-In test cases, we sometimes need to exercise error conditions returned by your dependencies that are hard to reproduce in unit tests. The solution to reproduce those scenarios typically involves one of the following options:
+In test cases, you sometimes need to exercise error conditions returned by your dependencies that are hard to reproduce in unit tests. The solution to reproduce those scenarios typically involves one of the following options:
 - Doing interaction tests with mocks
 - Creating a fake version of the dependency
 
@@ -47,8 +46,8 @@ func MyFunc() (string, error) {
 Then in tests you can simulate the error condition with:
 ```go
 import (
-    "errors"
-    "testing"
+	"errors"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -71,11 +70,11 @@ To solve for that, we can generalize the errhook concept mentioned in the previo
 
 For example, if you are testing:
 ```go
-const maxDbResults = 1000
+const maxDBResults = 1000
 
 func MyFunc() {
     results := FetchFromDb()
-    if (len(results) >= maxDbResults) {
+    if len(results) >= maxDBResults {
         // do something
     } else {
         // do something else
@@ -83,17 +82,17 @@ func MyFunc() {
 }
 ```
 
-And in tests you would like to change maxDbResults to exercise the two branches, using this library you can do:
+And in tests you would like to change maxDBResults to exercise the two branches, using this library you can do:
 ```go
-var maxDbResultsValueHook = testhooks.NewValueHook[int]()
+var maxDBResultsValueHook = testhooks.NewValueHook[int]()
 
-func maxDbResults() int {
-    return maxDbResultsValueHook.Apply(1000)
+func maxDBResults() int {
+    return maxDBResultsValueHook.Apply(1000)
 }
 
 func MyFunc() {
     results := FetchFromDb()
-    if (len(results) >= maxDbResults()) {
+    if (len(results) >= maxDBResults()) {
         // do something
     } else {
         // do something else
@@ -104,21 +103,21 @@ func MyFunc() {
 Then in tests you can change the value with:
 ```go
 import (
-    "testing"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMyFunc(t *testing.T) {
-    // Change maxDbResults to 3.
+    // Change maxDBResults to 3.
     // This change will be reverted at the end of the test.
-    maxDbResultsValueHook.WithValue(3).SetupInTest(t)
+    maxDBResultsValueHook.WithValue(3).SetupInTest(t)
     MyFunc()
     // do assertions ...
 }
 ```
 
-The alternative if you didn't use this library would be to make `maxDbResults` a var and change it in tests but making sure you revert it back to the original value.
+The alternative if you didn't use this library would be to make `maxDBResults` a var and change it in tests but making sure you revert it back to the original value.
 
 ### Alternate setup usage with RunFunc
 
@@ -132,23 +131,13 @@ So in the example from "Injecting values in tests" section above, you could writ
 
 ```go
 func TestMyFunc(t *testing.T) {
-    // Change maxDbResults to 3 within the func() {} block
+    // Change maxDBResults to 3 within the func() {} block
     // This change will be reverted once RunFunc returns.
-    maxDbResultsValueHook.WithValue(3).RunFunc(func() {
+    maxDBResultsValueHook.WithValue(3).RunFunc(func() {
         MyFunc()
         // do assertions ...
     })
 }
-```
-
-## Development
-
-Requires Go 1.25 or later.
-
-Tests also require Python 3 for the disassembly check; the library builds without it.
-
-```bash
-make test
 ```
 
 ## Advantages/Disadvantages
@@ -171,12 +160,24 @@ When the code is built with the `notest` build tag, the `Apply` functions of the
 
 By default (when the `notest` build tag is not used), it assumes the code being built may be used in tests, so it includes implementations of the `Apply` methods with the branches necessary for injecting errors/values.
 
+The default is "on" so `go test` works without extra flags. If the tag is omitted from a production build, the hooks remain inert unless activated, but their `Apply` branches can add a small runtime cost.
+
 However production binaries should be built using the `notest` tag like the following:
 ```bash
 go build -tags notest ./...
 ```
 
 To verify that this mitigation works, we run some checks on the disassembled code. More details can be found in [disassemblychecks](disassemblychecks/README.md).
+
+## Development
+
+Requires Go 1.25 or later.
+
+Tests also require Python 3 for the disassembly check; the library builds without it.
+
+```bash
+make test
+```
 
 ## Project status
 
