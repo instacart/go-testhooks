@@ -22,15 +22,19 @@ type WithSetup interface {
 	// RunFunc runs the given block calling the setup function and the
 	// cleanup function.
 	//
-	// RunFunc defines a scope: activations created inside block, including
-	// ones registered with SetupInTest, are cleaned up when the block returns.
+	// For hook-created WithSetups, RunFunc scopes later activations of the
+	// same hook: the activation it creates and any later activation of that
+	// hook inside block (including one registered with SetupInTest) are cleaned
+	// up when the block returns. Activations of other hooks and custom
+	// NewWithSetup callbacks are independent.
 	RunFunc(block func())
 
 	// SetupInTest runs the setup immediately and schedules the cleanup
 	// function to be run when the current test/subtest finishes.
 	//
-	// If called inside a RunFunc scope, it is scoped to that RunFunc: the
-	// cleanup runs when the RunFunc returns, not at the end of the test.
+	// If called inside a RunFunc block on the same hook, it is cleaned when
+	// the RunFunc returns, not at the end of the test. SetupInTest on a
+	// different hook is independent and remains until test cleanup.
 	//
 	// Note: it expects to receive *testing.T as an argument,
 	// however the current type argument is an interface with

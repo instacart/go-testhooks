@@ -31,9 +31,9 @@ func (e *valueHook[T]) WithValue(fakeValue T) WithSetup {
 				if e.activations[i].id != activationID {
 					continue
 				}
-				// RunFunc is a scope: clean this activation and everything
-				// activated inside it. clear releases the values before the
-				// backing array is shortened.
+				// RunFunc is a scope for this hook: clean this activation
+				// and everything activated on the same hook inside it. clear
+				// releases the values before the backing array is shortened.
 				clear(e.activations[i:])
 				e.activations = e.activations[:i]
 				return

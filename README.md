@@ -124,7 +124,7 @@ The alternative if you didn't use this library would be to make `maxDbResults` a
 
 By default the hooks return a `WithSetup` object that you can call `.SetupInTest(t)` that will run the setup immediately but also schedule to clean up any changes that were made at the end of the test. There is also an alternative `.RunFunc(func() {})` in case you want the change to the hook to apply just within a small block.
 
-`RunFunc` defines a scope: any setup activated inside the block, including a `SetupInTest`, is cleaned up when the block returns. If an override must remain active until the test ends, register its `SetupInTest` outside the `RunFunc` block.
+`RunFunc` scopes later activations of the same hook: the activation it creates, and any later activation of that hook inside the block (including a `SetupInTest`), are cleaned up when the block returns. Activations of other hooks and custom `NewWithSetup` callbacks are independent and keep their own cleanup timing. If a same-hook override must remain active until the test ends, register its `SetupInTest` outside the `RunFunc` block.
 
 So in the example from "Injecting values in tests" section above, you could write:
 
