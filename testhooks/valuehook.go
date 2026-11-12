@@ -2,18 +2,16 @@ package testhooks
 
 // Hook to return fake errors in tests.
 type valueHook[T any] struct {
-	fakeValue    T
-	fakeValueSet bool
-
-	// previous holds the state saved by each activation. A single WithSetup
-	// can be reused in nested scopes, so restores must happen in LIFO order.
-	previous []valueHookState[T]
+	// activations is the stack of active overrides. The last entry is the
+	// effective value. Activations carry an ID so a cleanup can remove the
+	// activation it created rather than whichever activation happens to be on
+	// top.
+	activations []valueActivation[T]
 }
 
-// valueHookState is the state saved by one activation of a WithSetup.
-type valueHookState[T any] struct {
+type valueActivation[T any] struct {
+	id    int
 	value T
-	set   bool
 }
 
 // WithValue returns a WithSetup that will setup valueHook with fakeValue.
@@ -21,24 +19,25 @@ type valueHookState[T any] struct {
 // When Apply is called and the setup is in effect, this hook will return
 // fakeValue.
 func (e *valueHook[T]) WithValue(fakeValue T) WithSetup {
-	return NewWithSetup(
-		func() {
-			e.previous = append(e.previous, valueHookState[T]{
-				value: e.fakeValue,
-				set:   e.fakeValueSet,
+	return newWithSetup(
+		func(activationID int) {
+			e.activations = append(e.activations, valueActivation[T]{
+				id:    activationID,
+				value: fakeValue,
 			})
-			e.fakeValue = fakeValue
-			e.fakeValueSet = true
 		},
-		func() {
-			last := len(e.previous) - 1
-			state := e.previous[last]
-			// Clear the slot before reslicing so the backing array does not
-			// keep the restored value reachable.
-			e.previous[last] = valueHookState[T]{}
-			e.previous = e.previous[:last]
-			e.fakeValue = state.value
-			e.fakeValueSet = state.set
+		func(activationID int) {
+			for i := len(e.activations) - 1; i >= 0; i-- {
+				if e.activations[i].id != activationID {
+					continue
+				}
+				// RunFunc is a scope: clean this activation and everything
+				// activated inside it. clear releases the values before the
+				// backing array is shortened.
+				clear(e.activations[i:])
+				e.activations = e.activations[:i]
+				return
+			}
 		},
 	)
 }

@@ -44,4 +44,12 @@ func TestValueHook(t *testing.T) {
 		assert.Equal(t, fakeValue1, valueHook.Apply(originalValue))
 	})
 	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
+
+	// RunFunc is a scope: a SetupInTest created inside the block is cleaned
+	// when the RunFunc returns, rather than lingering until test cleanup.
+	valueHook.WithValue(fakeValue1).RunFunc(func() {
+		valueHook.WithValue(fakeValue2).SetupInTest(t)
+		assert.Equal(t, fakeValue2, valueHook.Apply(originalValue))
+	})
+	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
 }

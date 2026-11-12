@@ -13,8 +13,8 @@ package testhooks
 // Note: When built with notest build tag, this method implementation
 // will be replaced with one that just returns the value back.
 func (e *valueHook[T]) Apply(value T) T {
-	if e.fakeValueSet {
-		return e.fakeValue
+	if len(e.activations) > 0 {
+		return e.activations[len(e.activations)-1].value
 	}
 	return value
 }
