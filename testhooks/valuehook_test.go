@@ -32,4 +32,14 @@ func TestValueHook(t *testing.T) {
 		assert.Equal(t, fakeValue1, valueHook.Apply(originalValue))
 	})
 	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
+
+	// Reusing the same setup in nested scopes must restore the outer state.
+	reused := valueHook.WithValue(fakeValue1)
+	reused.RunFunc(func() {
+		reused.RunFunc(func() {
+			assert.Equal(t, fakeValue1, valueHook.Apply(originalValue))
+		})
+		assert.Equal(t, fakeValue1, valueHook.Apply(originalValue))
+	})
+	assert.Equal(t, originalValue, valueHook.Apply(originalValue))
 }
