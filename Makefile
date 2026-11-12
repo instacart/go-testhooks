@@ -1,0 +1,16 @@
+.PHONY: test vet
+
+# `go test` already runs a subset of vet (printf, tests, ...) against every
+# package it builds. `go vet` adds the rest -- copylocks, lostcancel,
+# unusedresult -- which do not run during a test build.
+test: vet
+	go test ./testhooks/...
+	go test -tags notest ./notesttests/...
+	./disassemblychecks/run_checks.sh
+
+# Mirrors the test targets: the notest build tag selects the stub
+# implementations, so the notest tests have to be vetted under it too.
+vet:
+	go vet ./testhooks/...
+	go vet -tags notest ./notesttests/...
+	go vet ./disassemblychecks/...
