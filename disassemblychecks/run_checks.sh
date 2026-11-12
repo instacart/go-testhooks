@@ -34,9 +34,9 @@ done
 
 OUT_DIR=$1
 if [ "$OUT_DIR" != "" ]; then
-    rm -rf $OUT_DIR || true
-    cp -r $TMP_DIR $OUT_DIR
-    rm -rf $OUT_DIR/scripts
+    rm -rf -- "$OUT_DIR" || true
+    cp -r -- "$TMP_DIR" "$OUT_DIR"
+    rm -rf -- "$OUT_DIR/scripts"
     echo "Copied all logs and binaries to $OUT_DIR"
 fi
 

@@ -33,6 +33,9 @@ func (e *valueHook[T]) WithValue(fakeValue T) WithSetup {
 		func() {
 			last := len(e.previous) - 1
 			state := e.previous[last]
+			// Clear the slot before reslicing so the backing array does not
+			// keep the restored value reachable.
+			e.previous[last] = valueHookState[T]{}
 			e.previous = e.previous[:last]
 			e.fakeValue = state.value
 			e.fakeValueSet = state.set
