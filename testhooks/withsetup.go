@@ -36,6 +36,10 @@ type WithSetup interface {
 	// the RunFunc returns, not at the end of the test. SetupInTest on a
 	// different hook is independent and remains until test cleanup.
 	//
+	// t must be the testing.TB of the currently running test/subtest. Passing
+	// another test's TB (for example a parent's from a child) is undefined;
+	// use the TB of the scope the override belongs to.
+	//
 	// Note: it expects to receive *testing.T as an argument,
 	// however the current type argument is an interface with
 	// a subset of the methods in *testing.T to avoid a direct
