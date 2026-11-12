@@ -32,8 +32,12 @@ for BINTEST in errhook valuehook; do
     rungobuild $BINTEST notest
 done
 
-OUT_DIR=$1
-if [ "$OUT_DIR" != "" ]; then
+OUT_PARENT=$1
+if [ "$OUT_PARENT" != "" ]; then
+    # $1 is the parent directory; only its "out" subdirectory is ours to
+    # replace, so unrelated files in the parent are left alone.
+    OUT_DIR="$OUT_PARENT/out"
+    mkdir -p -- "$OUT_PARENT"
     rm -rf -- "$OUT_DIR" || true
     cp -r -- "$TMP_DIR" "$OUT_DIR"
     rm -rf -- "$OUT_DIR/scripts"

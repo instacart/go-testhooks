@@ -16,11 +16,11 @@ To run the checks, run `./run_checks.sh`
 The checks build the sample binaries with `go build` and use a Python script to parse the
 disassembled output.
 
-To output the actual disassembled code and binaries for inspection, pass a directory argument to `run_checks.sh`, for example: `./run_checks.sh /tmp/out`. It will produce a folder structure like:
+To output the actual disassembled code and binaries for inspection, pass a parent directory argument to `run_checks.sh`, for example: `./run_checks.sh /tmp/checks`. Only the `out` subdirectory of that parent is replaced; other files in the parent are left untouched. It will produce a folder structure like:
 ```
-/tmp/out/errhook/go-build-bin-default.bin
-/tmp/out/errhook/go-build-bin-notest.bin
-/tmp/out/errhook/go-build-logs-default.txt
-/tmp/out/errhook/go-build-logs-notest.txt
+/tmp/checks/out/errhook/go-build-bin-default.bin
+/tmp/checks/out/errhook/go-build-bin-notest.bin
+/tmp/checks/out/errhook/go-build-logs-default.txt
+/tmp/checks/out/errhook/go-build-logs-notest.txt
 # ... other diassembly tests ...
 ```
