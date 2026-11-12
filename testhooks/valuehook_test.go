@@ -9,6 +9,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type cleanupRecorder struct {
+	cleanups []func()
+}
+
+func (r *cleanupRecorder) Cleanup(f func()) {
+	r.cleanups = append(r.cleanups, f)
+}
+
 func TestValueHook(t *testing.T) {
 	valueHook := NewValueHook[string]()
 	originalValue := "original value"
@@ -62,6 +70,19 @@ func TestValueHook(t *testing.T) {
 		otherHook.WithValue(fakeValue2).SetupInTest(t)
 	})
 	assert.Equal(t, fakeValue2, otherHook.Apply(originalValue))
+
+	// Out-of-order SetupInTest cleanups remove only their own activation.
+	cleanupHook := NewValueHook[string]()
+	cleanupA, cleanupB := &cleanupRecorder{}, &cleanupRecorder{}
+	cleanupHook.WithValue(fakeValue1).SetupInTest(cleanupA)
+	cleanupHook.WithValue(fakeValue2).SetupInTest(cleanupB)
+	assert.Equal(t, fakeValue2, cleanupHook.Apply(originalValue))
+
+	// A finishes first; B must keep its override.
+	cleanupA.cleanups[0]()
+	assert.Equal(t, fakeValue2, cleanupHook.Apply(originalValue))
+	cleanupB.cleanups[0]()
+	assert.Equal(t, originalValue, cleanupHook.Apply(originalValue))
 
 	// Apply must be safe while another goroutine is setting up and tearing
 	// down overrides. Run with -race to verify the snapshots are immutable.
