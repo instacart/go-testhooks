@@ -3,6 +3,7 @@
 package testhooks
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,4 +61,28 @@ func TestValueHook(t *testing.T) {
 		otherHook.WithValue(fakeValue2).SetupInTest(t)
 	})
 	assert.Equal(t, fakeValue2, otherHook.Apply(originalValue))
+
+	// Apply must be safe while another goroutine is setting up and tearing
+	// down overrides. Run with -race to verify the snapshots are immutable.
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_ = valueHook.Apply(originalValue)
+				}
+			}
+		}()
+	}
+	for i := 0; i < 100; i++ {
+		valueHook.WithValue(fakeValue1).RunFunc(func() {})
+	}
+	close(stop)
+	wg.Wait()
 }

@@ -1,17 +1,19 @@
 package testhooks
 
-// Hook to return fake errors in tests.
-type valueHook[T any] struct {
-	// activations is the stack of active overrides. The last entry is the
-	// effective value. Activations carry an ID so a cleanup can remove the
-	// activation it created rather than whichever activation happens to be on
-	// top.
-	activations []valueActivation[T]
-}
+import "sync/atomic"
+
+// activationList is an immutable snapshot of active overrides. Snapshots are
+// published with copy-on-write so Apply can read without a lock.
+type activationList[T any] []valueActivation[T]
 
 type valueActivation[T any] struct {
 	id    int
 	value T
+}
+
+// Hook to return fake errors in tests.
+type valueHook[T any] struct {
+	activations atomic.Pointer[activationList[T]]
 }
 
 // WithValue returns a WithSetup that will setup valueHook with fakeValue.
@@ -21,25 +23,53 @@ type valueActivation[T any] struct {
 func (e *valueHook[T]) WithValue(fakeValue T) WithSetup {
 	return newWithSetup(
 		func(activationID int) {
-			e.activations = append(e.activations, valueActivation[T]{
-				id:    activationID,
-				value: fakeValue,
-			})
+			for {
+				current := e.activations.Load()
+				var next activationList[T]
+				if current != nil {
+					next = make(activationList[T], len(*current), len(*current)+1)
+					copy(next, *current)
+				}
+				next = append(next, valueActivation[T]{id: activationID, value: fakeValue})
+				if e.activations.CompareAndSwap(current, newActivationList(next)) {
+					return
+				}
+			}
 		},
 		func(activationID int) {
-			for i := len(e.activations) - 1; i >= 0; i-- {
-				if e.activations[i].id != activationID {
-					continue
+			for {
+				current := e.activations.Load()
+				if current == nil {
+					return
 				}
-				// RunFunc is a scope for this hook: clean this activation
-				// and everything activated on the same hook inside it. clear
-				// releases the values before the backing array is shortened.
-				clear(e.activations[i:])
-				e.activations = e.activations[:i]
-				return
+				activations := *current
+				index := -1
+				for i := len(activations) - 1; i >= 0; i-- {
+					if activations[i].id == activationID {
+						index = i
+						break
+					}
+				}
+				if index < 0 {
+					return
+				}
+				// RunFunc is a scope for this hook: remove this activation and
+				// everything activated on the same hook inside it.
+				next := make(activationList[T], index)
+				copy(next, activations[:index])
+				if e.activations.CompareAndSwap(current, newActivationList(next)) {
+					return
+				}
 			}
 		},
 	)
+}
+
+func newActivationList[T any](activations activationList[T]) *activationList[T] {
+	if len(activations) == 0 {
+		return nil
+	}
+	return &activations
 }
 
 // Returns a hook to return fake errors in tests.
